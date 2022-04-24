@@ -2,6 +2,7 @@
 
 import sys
 import inspect
+from lark import Token
 from lark.lark import Lark
 from lark.visitors import Interpreter
 from lark.indenter import PythonIndenter
@@ -29,9 +30,7 @@ class py2math(sys.modules[__name__].__class__):
         code = inspect.getsource(obj)
         print(code)
         print(self.parser.parse(code).pretty())
-        c = Converter()
-        
-        return Math(c.visit(self.parser.parse(code)))
+        return Math(Converter().visit(self.parser.parse(code)))
 
 class Math(object):
     def __init__(self, latex):
@@ -95,14 +94,32 @@ class Converter(Interpreter):
         return f'({", ".join(values)})'
 
     def python__term(self, tree):
-        a, value, b, *_ = self.visit_children(tree)
-        # TODO: accept more than two operands
         # TODO: use `\cdot` for `*` and `\frac{}{}` for `/`
         # if value == '*':
         #     value = r'\cdot'  # `\` doesn't work yet, as it gets duplicated
         # elif value == '/':
         #     value = r'\frac{...}{...}'
-        return a + value + b
+        result = ''
+        for i, (x, x_obj) in enumerate(zip(self.visit_children(tree), tree.children)):
+            if i % 2 == 0:  # operand
+                # put brackets around non-trivial expressions (which are of type str)
+                # TODO: maybe switch to x_obj for checking
+                result += x if isinstance(x, Token) else f'({x})'
+            else:  # operator
+                result += x
+        return result
+
+    def python__arith_expr(self, tree):
+        result = ''
+        for i, (x, x_obj) in enumerate(zip(self.visit_children(tree), tree.children)):
+            if i % 2 == 0:  # operand
+                # put brackets around non-trivial expressions (which are of type str)
+                # TODO: maybe switch to x_obj for checking
+                # TODO: maybe too many brackets
+                result += x if isinstance(x, Token) else f'({x})'
+            else:  # operator
+                result += x
+        return result
 
     def python__var(self, tree):
         value, = tree.children
@@ -111,11 +128,6 @@ class Converter(Interpreter):
     def python__number(self, tree):
         value, = tree.children
         return value
-
-    def python__arith_expr(self, tree):
-        a, value, b = self.visit_children(tree)
-        # TODO: put brackets around if necessary
-        return a + value + b
 
 
 

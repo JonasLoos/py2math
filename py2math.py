@@ -1,4 +1,4 @@
-'''py2math: convert python objects to latex math'''
+'''py2math: convert python objects to latex math for use in ipython notebooks'''
 
 import sys
 import inspect
@@ -49,6 +49,7 @@ class Converter(Interpreter):
         return idk
 
     def eval_input(self, tree):
+        # TODO: maybe remove, if e.g. file_input is made the default
         idk, = self.visit_children(tree)
         return idk
 
@@ -59,6 +60,15 @@ class Converter(Interpreter):
     def python__funcdef(self, tree):
         name, parameters, test, suite = self.visit_children(tree)
         return f'{name}({", ".join(x for x in parameters if x)}) = {suite}'
+
+    def python__assign_stmt(self, tree):
+        idk, = self.visit_children(tree)
+        return idk
+
+    def python__assign(self, tree):
+        var, value = self.visit_children(tree)
+        # TODO: convert lambda to normal function or add variable definition to "with" section
+        return value
 
     def python__suite(self, tree):
         value, = self.visit_children(tree)
@@ -85,9 +95,13 @@ class Converter(Interpreter):
         return f'({", ".join(values)})'
 
     def python__term(self, tree):
-        a, value, b = self.visit_children(tree)
+        a, value, b, *_ = self.visit_children(tree)
+        # TODO: accept more than two operands
+        # TODO: use `\cdot` for `*` and `\frac{}{}` for `/`
         # if value == '*':
         #     value = r'\cdot'  # `\` doesn't work yet, as it gets duplicated
+        # elif value == '/':
+        #     value = r'\frac{...}{...}'
         return a + value + b
 
     def python__var(self, tree):
@@ -100,6 +114,7 @@ class Converter(Interpreter):
 
     def python__arith_expr(self, tree):
         a, value, b = self.visit_children(tree)
+        # TODO: put brackets around if necessary
         return a + value + b
 
 

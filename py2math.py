@@ -27,7 +27,11 @@ class py2math(sys.modules[__name__].__class__):
         return self.parser_obj
 
     def __call__(self, obj):
-        code = inspect.getsource(obj)
+        try:
+            code = inspect.getsource(obj)
+        except TypeError as err:
+            # if `obj` isn't a function, class or similar object (which has code) print it directly
+            return Math(str(obj))
         print(code)
         print(self.parser.parse(code).pretty())
         return Math(Converter().visit(self.parser.parse(code)))
@@ -131,5 +135,5 @@ class Converter(Interpreter):
 
 
 
-
-sys.modules[__name__].__class__ = py2math  # make module import callable
+# make module import callable
+sys.modules[__name__].__class__ = py2math

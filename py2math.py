@@ -8,7 +8,8 @@ from lark.visitors import Interpreter
 from lark.indenter import PythonIndenter
 
 
-grammar = r'''
+# import python grammar from lark
+GRAMMAR = r'''
 %import python (file_input, COMMENT)
 %ignore /[\t \f]+/  // WS
 %ignore /\\[\t \f]*\r?\n/   // LINE_CONT
@@ -23,7 +24,7 @@ class py2math(sys.modules[__name__].__class__):
     @property
     def parser(self):
         if not self.parser_obj:
-            self.parser_obj = Lark(grammar, postlex=PythonIndenter(), start='file_input')
+            self.parser_obj = Lark(GRAMMAR, postlex=PythonIndenter(), start='file_input')
         return self.parser_obj
 
     def __call__(self, obj):
@@ -84,7 +85,7 @@ class Converter(Interpreter):
     def python__funccall(self, tree):
         var, args = self.visit_children(tree)
         return f'{var}({args})'
-    
+
     def python__arguments(self, tree):
         idk, = self.visit_children(tree)
         return idk
@@ -98,20 +99,32 @@ class Converter(Interpreter):
         return f'({", ".join(values)})'
 
     def python__term(self, tree):
-        # TODO: use `\cdot` for `*` and `\frac{}{}` for `/`
-        # if value == '*':
-        #     value = r'\cdot'  # `\` doesn't work yet, as it gets duplicated
-        # elif value == '/':
-        #     value = r'\frac{...}{...}'
-        result = ''
+        dividend = []
+        divisor = []
+        dividing = False
         for i, (x, x_obj) in enumerate(zip(self.visit_children(tree), tree.children)):
             if i % 2 == 0:  # operand
-                # put brackets around non-trivial expressions (which are of type str)
-                # TODO: maybe switch to x_obj for checking
-                result += x if isinstance(x, Token) else f'({x})'
+                if dividing:
+                    divisor += [x]
+                else:
+                    dividend += [x]
             else:  # operator
-                result += x
-        return result
+                if x in '*/':
+                    dividing = x == '/'
+                else:
+                    raise NotImplementedError(f'x')
+        if len(dividend) > 1:
+            # put brackets around non-trivial expressions (which are of type str)
+            # TODO: maybe switch to x_obj for checking (from above loop)
+            dividend = [(x if isinstance(x, Token) else f'({x})') for x in dividend]
+        dividend_str = ' \\cdot '.join(dividend)
+        if divisor:
+            if len(divisor) > 1:
+                divisor = [(x if isinstance(x, Token) else f'({x})') for x in divisor]
+            divisor_str = ' \\cdot '.join(divisor)
+            return f'\\frac{{{dividend_str}}}{{{divisor_str}}}'
+        else:
+            return dividend_str
 
     def python__arith_expr(self, tree):
         result = ''

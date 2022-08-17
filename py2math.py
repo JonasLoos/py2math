@@ -46,6 +46,13 @@ class Math(object):
         return self.latex
 
 
+def bracketize(x):
+    '''put brackets around non-trivial expressions (which are not of type str)'''
+    # TODO: check if `isinstance(x, Token)` is reliable, or if elements of obj.children should be used here
+    # TODO: maybe too many brackets
+    return x if isinstance(x, Token) else f'({x})'
+
+
 class Converter(Interpreter):
 
     def file_input(self, tree):
@@ -123,19 +130,17 @@ class Converter(Interpreter):
                     divisor += [x]
                 else:
                     dividend += [x]
-            else:  # operator
+            else:  # operator: * / @ % //
                 if x in '*/':
                     dividing = x == '/'
                 else:
                     raise NotImplementedError(f'x')
         if len(dividend) > 1:
-            # put brackets around non-trivial expressions (which are of type str)
-            # TODO: maybe switch to x_obj for checking (from above loop)
-            dividend = [(x if isinstance(x, Token) else f'({x})') for x in dividend]
+            dividend = [(bracketize(x)) for x in dividend]
         dividend_str = ' \\cdot '.join(dividend)
         if divisor:
             if len(divisor) > 1:
-                divisor = [(x if isinstance(x, Token) else f'({x})') for x in divisor]
+                divisor = [(bracketize(x)) for x in divisor]
             divisor_str = ' \\cdot '.join(divisor)
             return f'\\frac{{{dividend_str}}}{{{divisor_str}}}'
         else:
@@ -145,13 +150,14 @@ class Converter(Interpreter):
         result = ''
         for i, (x, x_obj) in enumerate(zip(self.visit_children(tree), tree.children)):
             if i % 2 == 0:  # operand
-                # put brackets around non-trivial expressions (which are of type str)
-                # TODO: maybe switch to x_obj for checking
-                # TODO: maybe too many brackets
-                result += x if isinstance(x, Token) else f'({x})'
-            else:  # operator
+                result += bracketize(x)
+            else:  # operator: + -
                 result += x
         return result
+
+    def python__power(self, tree):
+        base, exponent = self.visit_children(tree)
+        return f'{{{bracketize(base)}}}^{{{exponent}}}'
 
     def python__var(self, tree):
         value, = tree.children

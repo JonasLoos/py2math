@@ -50,7 +50,7 @@ def bracketize(x):
     '''put brackets around non-trivial expressions (which are not of type str)'''
     # TODO: check if `isinstance(x, Token)` is reliable, or if elements of obj.children should be used here
     # TODO: maybe too many brackets
-    return x if isinstance(x, Token) else f'({x})'
+    return x if isinstance(x, Token) else f'\\left({x}\\right)'
 
 
 class Converter(Interpreter):
@@ -100,6 +100,15 @@ class Converter(Interpreter):
         value, = self.visit_children(tree)
         return value
 
+    def python__test(self, tree):
+        option_a, condition, option_b = self.visit_children(tree)
+        return f'''
+            \\begin{{cases}}
+            {option_a} & \\text{{if }} {condition} \\\\
+            {option_b} & \\text{{otherwise}}
+            \\end{{cases}}
+        '''
+
     def python__funccall(self, tree):
         var, args = self.visit_children(tree)
         return f'{var}({args})'
@@ -119,7 +128,13 @@ class Converter(Interpreter):
 
     def python__testlist_tuple(self, tree):
         values = self.visit_children(tree)
+        # TODO: should there always be brackets around? Otherwise tuples in e.g. sets might not work correctly
         return ',\\ '.join(values)
+
+    def python__set(self, tree):
+        elements = self.visit_children(tree)
+        # TODO: test star expressions
+        return '\\left\\{' + ',\\ '.join(elements) + '\\right\\}'
 
     def python__term(self, tree):
         dividend = []
@@ -131,7 +146,7 @@ class Converter(Interpreter):
                     divisor += [x]
                 else:
                     dividend += [x]
-            else:  # operator: * / @ % //
+            else:  # operator: *, /, @, %, //
                 if x in '*/':
                     dividing = x == '/'
                 else:
@@ -152,7 +167,7 @@ class Converter(Interpreter):
         for i, (x, x_obj) in enumerate(zip(self.visit_children(tree), tree.children)):
             if i % 2 == 0:  # operand
                 result += bracketize(x)
-            else:  # operator: + -
+            else:  # operator: +, -
                 result += x
         return result
 
@@ -165,8 +180,25 @@ class Converter(Interpreter):
         return '[shift_expr]'
 
     def python__comparison(self, tree):
-        # TODO
-        return '[comparison]'
+        result = ''
+        for i, (x, x_obj) in enumerate(zip(self.visit_children(tree), tree.children)):
+            if i % 2 == 0:  # operand
+                result += bracketize(x)
+            else:  # operator: <, >, ==, >=, <=, <>, !=, in, not in, is, is not
+                result += {
+                    '<': ' < ',
+                    '>': ' > ',
+                    '==': ' = ',
+                    '>=': ' \\geq ',
+                    '<=': ' \\leq ',
+                    # '<>': '',  # not really valid, see PEP 401
+                    '!=': ' \\neq ',
+                    'in': ' \\in ',
+                    'not in': ' \\notin ',
+                    'is': ' \\equiv ',
+                    'is not': ' \\not\\equiv ',
+                }[' '.join(x)]
+        return result
 
     def python__var(self, tree):
         value, = tree.children
@@ -175,6 +207,10 @@ class Converter(Interpreter):
     def python__number(self, tree):
         value, = tree.children
         return value
+
+    def python__string(self, tree):
+        value, = tree.children
+        return f'\\text{{{value}}}'
 
 
 

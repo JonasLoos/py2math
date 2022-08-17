@@ -97,8 +97,13 @@ class Converter(Interpreter):
         return f'{var}({args})'
 
     def python__arguments(self, tree):
-        idk, = self.visit_children(tree)
-        return idk
+        args = self.visit_children(tree)
+        return ',\\ '.join(args)
+
+    def python__argvalue(self, tree):
+        argname, value = self.visit_children(tree)
+        # TODO: handle argmane
+        return value
 
     def python__lambdef(self, tree):
         idk, expr = self.visit_children(tree)
@@ -106,7 +111,7 @@ class Converter(Interpreter):
 
     def python__testlist_tuple(self, tree):
         values = self.visit_children(tree)
-        return f'({", ".join(values)})'
+        return ',\\ '.join(values)
 
     def python__term(self, tree):
         dividend = []

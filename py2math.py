@@ -33,8 +33,8 @@ class py2math(sys.modules[__name__].__class__):
         except TypeError as err:
             # if `obj` isn't a function, class or similar object (which has code) print it directly
             return Math(str(obj))
-        print(code)
-        print(self.parser.parse(code).pretty())
+        print(code)  # debug
+        print(self.parser.parse(code).pretty())  # debug
         return Math(Converter().visit(self.parser.parse(code)))
 
 class Math(object):
@@ -64,6 +64,16 @@ class Converter(Interpreter):
     def python__funcdef(self, tree):
         name, parameters, test, suite = self.visit_children(tree)
         return f'{name}({", ".join(x for x in parameters if x)}) = {suite}'
+
+    def python__paramvalue(self, tree):
+        typedparam, test = self.visit_children(tree)
+        # TODO: handle `test`, i.e. the default value of the parameter
+        return typedparam
+
+    def python__typedparam(self, tree):
+        name, test = self.visit_children(tree)
+        # TODO: handle `test`, i.e. the type of the parameter
+        return name
 
     def python__assign_stmt(self, tree):
         idk, = self.visit_children(tree)

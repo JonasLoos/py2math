@@ -69,17 +69,18 @@ class Converter(Interpreter):
         return idk
 
     def python__funcdef(self, tree):
-        name, parameters, test, suite = self.visit_children(tree)
+        name, parameters, return_type, suite = self.visit_children(tree)
+        # TODO: handle return type
         return f'{name}({", ".join(x for x in parameters if x)}) = {suite}'
 
     def python__paramvalue(self, tree):
-        typedparam, test = self.visit_children(tree)
-        # TODO: handle `test`, i.e. the default value of the parameter
+        typedparam, default_val = self.visit_children(tree)
+        # TODO: handle the default value of the parameter
         return typedparam
 
     def python__typedparam(self, tree):
-        name, test = self.visit_children(tree)
-        # TODO: handle `test`, i.e. the type of the parameter
+        name, param_type = self.visit_children(tree)
+        # TODO: handle the type of the parameter
         return name
 
     def python__assign_stmt(self, tree):
@@ -134,7 +135,7 @@ class Converter(Interpreter):
                 if x in '*/':
                     dividing = x == '/'
                 else:
-                    raise NotImplementedError(f'x')
+                    raise NotImplementedError(f'{x}')
         if len(dividend) > 1:
             dividend = [(bracketize(x)) for x in dividend]
         dividend_str = ' \\cdot '.join(dividend)
@@ -158,6 +159,14 @@ class Converter(Interpreter):
     def python__power(self, tree):
         base, exponent = self.visit_children(tree)
         return f'{{{bracketize(base)}}}^{{{exponent}}}'
+
+    def python__shift_expr(self, tree):
+        # TODO
+        return '[shift_expr]'
+
+    def python__comparison(self, tree):
+        # TODO
+        return '[comparison]'
 
     def python__var(self, tree):
         value, = tree.children

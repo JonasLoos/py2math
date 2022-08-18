@@ -1,13 +1,7 @@
-'''py2math: convert python objects to latex math for use in ipython notebooks
+'''py2math: Convert Python objects to Latex math for use in jupyter notebooks.'''
 
-signature: `py2math(obj, debug : bool = False) -> Math`
-
-where `obj` is the function or code object which should be converted to latex math
-'''
-
-import sys
 import inspect
-from lark import Token
+from lark.lexer import Token
 from lark.lark import Lark
 from lark.visitors import Interpreter
 from lark.indenter import PythonIndenter
@@ -15,11 +9,26 @@ from lark.indenter import PythonIndenter
 
 # import python grammar from lark
 # https://github.com/lark-parser/lark/blob/master/lark/grammars/python.lark
-kwargs = dict(postlex=PythonIndenter(), start='file_input')
-parser = Lark.open_from_package('lark', 'python.lark', ['grammars'], parser='lalr', **kwargs)
+parser = Lark.open_from_package(
+    'lark',
+    'python.lark',
+    ['grammars'],
+    parser='lalr',
+    postlex=PythonIndenter(),
+    start='file_input'
+)
 
 
 def py2math(obj, debug=False) -> 'Math':
+    """Convert Python objects to Latex math e.g. for use in jupyter notebooks
+
+    Args:
+        obj (Any): function or code object which should be converted to latex math.
+        debug (bool, optional): Whether to print debug info. Defaults to False.
+
+    Returns:
+        Math: The resulting latex math, as a subclass of `str`, which is displayed as math in jupyter notebooks.
+    """
     if isinstance(obj, (list, tuple, set)):
         # parse nested code
         b1, b2 = {
@@ -50,7 +59,7 @@ class Math(str):
         return f'$$ {self} $$'
 
 
-def bracketize(x):
+def bracketize(x : 'Token | str') -> 'Token | str':
     '''put brackets around non-trivial expressions (which are not of type str)'''
     # TODO: check if `isinstance(x, Token)` is reliable, or if elements of obj.children should be used here
     # TODO: maybe too many brackets

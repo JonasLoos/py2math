@@ -18,32 +18,34 @@ GRAMMAR = r'''
 
 
 class py2math(sys.modules[__name__].__class__):
-    parser_obj = None
     '''main class replacing the module, making the imported name callable'''
+    # TODO: check if it makes sense to use the make the imported name callable
+
+    parser_obj = None
 
     @property
     def parser(self):
+        '''lark parser for the python code - is only loaded once'''
         if not self.parser_obj:
             self.parser_obj = Lark(GRAMMAR, postlex=PythonIndenter(), start='file_input')
         return self.parser_obj
 
-    def __call__(self, obj):
+    def __call__(self, obj, debug=False):
         try:
             code = inspect.getsource(obj)
         except TypeError as err:
             # if `obj` isn't a function, class or similar object (which has code) print it directly
             return Math(str(obj))
-        print(code)  # debug
-        print(self.parser.parse(code).pretty())  # debug
+        if debug:
+            print(code)
+            print(self.parser.parse(code).pretty())
         return Math(Converter().visit(self.parser.parse(code)))
 
-class Math(object):
-    def __init__(self, latex):
-        self.latex = f'$$ {latex} $$'
 
+class Math(str):
+    '''Superclass of string which is printed as math in jupyter notebooks'''
     def _repr_latex_(self):
-        print(self.latex)
-        return self.latex
+        return f'$$ {self} $$'
 
 
 def bracketize(x):
@@ -102,12 +104,13 @@ class Converter(Interpreter):
 
     def python__test(self, tree):
         option_a, condition, option_b = self.visit_children(tree)
-        return f'''
-            \\begin{{cases}}
-            {option_a} & \\text{{if }} {condition} \\\\
-            {option_b} & \\text{{otherwise}}
-            \\end{{cases}}
-        '''
+        return (
+            '\n'
+            '\\begin{cases}\n'
+            f'  {option_a} & \\text{{if }} {condition} \\\\\n'
+            f'  {option_b} & \\text{{otherwise}}\n'
+            '\\end{cases}\n'
+        )
 
     def python__funccall(self, tree):
         var, args = self.visit_children(tree)

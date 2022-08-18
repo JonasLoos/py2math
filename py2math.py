@@ -1,4 +1,9 @@
-'''py2math: convert python objects to latex math for use in ipython notebooks'''
+'''py2math: convert python objects to latex math for use in ipython notebooks
+
+signature: `py2math(obj, debug : bool = False) -> Math`
+
+where `obj` is the function or code object which should be converted to latex math
+'''
 
 import sys
 import inspect
@@ -9,6 +14,7 @@ from lark.indenter import PythonIndenter
 
 
 # import python grammar from lark
+# https://github.com/lark-parser/lark/blob/master/lark/grammars/python.lark
 GRAMMAR = r'''
 %import python (file_input, COMMENT)
 %ignore /[\t \f]+/  // WS

@@ -22,30 +22,19 @@ GRAMMAR = r'''
 %ignore COMMENT
 '''
 
+parser = Lark(GRAMMAR, postlex=PythonIndenter(), start='file_input')
 
-class py2math(sys.modules[__name__].__class__):
-    '''main class replacing the module, making the imported name callable'''
-    # TODO: check if it makes sense to use the make the imported name callable
 
-    parser_obj = None
-
-    @property
-    def parser(self):
-        '''lark parser for the python code - is only loaded once'''
-        if not self.parser_obj:
-            self.parser_obj = Lark(GRAMMAR, postlex=PythonIndenter(), start='file_input')
-        return self.parser_obj
-
-    def __call__(self, obj, debug=False):
-        try:
-            code = inspect.getsource(obj)
-        except TypeError as err:
-            # if `obj` isn't a function, class or similar object (which has code) print it directly
-            return Math(str(obj))
-        if debug:
-            print(code)
-            print(self.parser.parse(code).pretty())
-        return Math(Converter().visit(self.parser.parse(code)))
+def py2math(obj, debug=False):
+    try:
+        code = inspect.getsource(obj)
+    except TypeError as err:
+        # if `obj` isn't a function, class or similar object (which has code) print it directly
+        return Math(str(obj))
+    if debug:
+        print(code)
+        print(parser.parse(code).pretty())
+    return Math(Converter().visit(parser.parse(code)))
 
 
 class Math(str):
@@ -220,8 +209,3 @@ class Converter(Interpreter):
     def python__string(self, tree):
         value, = tree.children
         return f'\\text{{{value}}}'
-
-
-
-# make module import callable
-sys.modules[__name__].__class__ = py2math

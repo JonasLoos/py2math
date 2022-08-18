@@ -43,14 +43,17 @@ def py2math(obj, debug=False) -> 'Math':
         return Math('...')
     else:
         try:
+            # try to get the source code for the given object
             code = inspect.getsource(obj)
         except TypeError as err:
             # if `obj` isn't a function, class or similar object (which has code) print it directly
             return Math(str(obj))
-        if debug:
-            print('"' + code + '"')
-            print(parser.parse(code).pretty())
-        return Math(Converter().visit(parser.parse(code)))
+        if debug: print('"' + code + '"')
+        parse_tree = parser.parse(code)
+        if debug: print(parse_tree.pretty())
+        result = Math(Converter().visit(parser.parse(code)))
+        if debug: print(result._repr_latex_())
+        return result
 
 
 class Math(str):
@@ -101,13 +104,23 @@ class Converter(Interpreter):
         return idk
 
     def assign(self, tree):
-        var, value = self.visit_children(tree)
+        name, value = self.visit_children(tree)
         # TODO: convert lambda to normal function or add variable definition to "with" section
-        return value
+        return f'{name} = {value}'
 
     def suite(self, tree):
-        value, = self.visit_children(tree)
-        return value
+        lines = self.visit_children(tree)
+        assert tree.children[-1].data == 'return_stmt', f'the last statement has to be a return, not `{tree.children[-1].data}`'
+        assert all(x.data == 'assign_stmt' for x in tree.children[:-1]), f'only assignments are supported before the return, but got {[f"{x.data}" for x in tree.children[:-1]]}'
+        # TODO: extend translation capabilities and remove above constraint
+        if len(lines) == 1:
+            return lines[0]
+        else:
+            return (
+                lines[-1] +
+                '\\\\\n\\text{where}\\\\\n' +
+                '\\\\\n'.join(lines[:-1])
+            )
 
     def return_stmt(self, tree):
         value, = self.visit_children(tree)
@@ -137,8 +150,9 @@ class Converter(Interpreter):
         return value
 
     def lambdef(self, tree):
-        idk, expr = self.visit_children(tree)
-        return expr
+        params, expr = self.visit_children(tree)
+        ps = ",\\ ".join(filter(lambda x:x, params))
+        return f'({ps}) \\rightarrow {expr}'
 
     def testlist_tuple(self, tree):
         values = self.visit_children(tree)
@@ -226,6 +240,9 @@ class Converter(Interpreter):
                     'is not': ' \\not\\equiv ',
                 }[' '.join(x)]
         return result
+
+    def ellipsis(self, tree):
+        return '...'
 
     def var(self, tree):
         value, = tree.children

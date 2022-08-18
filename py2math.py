@@ -25,16 +25,29 @@ GRAMMAR = r'''
 parser = Lark(GRAMMAR, postlex=PythonIndenter(), start='file_input')
 
 
-def py2math(obj, debug=False):
-    try:
-        code = inspect.getsource(obj)
-    except TypeError as err:
-        # if `obj` isn't a function, class or similar object (which has code) print it directly
-        return Math(str(obj))
-    if debug:
-        print(code)
-        print(parser.parse(code).pretty())
-    return Math(Converter().visit(parser.parse(code)))
+def py2math(obj, debug=False) -> 'Math':
+    if isinstance(obj, (list, tuple, set)):
+        # parse nested code
+        b1, b2 = {
+            list: '[]',
+            tuple: '()',
+            set: '{}'
+        }[type(obj)]
+        # TODO: maybe add `,` in one-element tuples
+        return Math(f'\\left{b1}' + ', '.join(py2math(x, debug=debug) for x in obj) + f'\\right{b2}')
+    elif obj == ...:
+        # convert Ellipses to dots
+        return Math('...')
+    else:
+        try:
+            code = inspect.getsource(obj)
+        except TypeError as err:
+            # if `obj` isn't a function, class or similar object (which has code) print it directly
+            return Math(str(obj))
+        if debug:
+            print(code)
+            print(parser.parse(code).pretty())
+        return Math(Converter().visit(parser.parse(code)))
 
 
 class Math(str):
@@ -126,8 +139,18 @@ class Converter(Interpreter):
 
     def python__testlist_tuple(self, tree):
         values = self.visit_children(tree)
-        # TODO: should there always be brackets around? Otherwise tuples in e.g. sets might not work correctly
-        return ',\\ '.join(values)
+        if len(values) == 1:
+            # TODO: is this actually desired?
+            return f'\\left({values[0]},\\right)'
+        else:
+            return '\\left(' + ',\\ '.join(values) + '\\right)'
+
+    def python__tuple(self, tree):
+        values = self.visit_children(tree)
+        if len(values) == 1:
+            return f'\\left({values[0]},\\right)'
+        else:
+            return '\\left(' + ',\\ '.join(values) + '\\right)'
 
     def python__set(self, tree):
         elements = self.visit_children(tree)
@@ -148,6 +171,7 @@ class Converter(Interpreter):
                 if x in '*/':
                     dividing = x == '/'
                 else:
+                    # TODO: implement other operators
                     raise NotImplementedError(f'{x}')
         if len(dividend) > 1:
             dividend = [(bracketize(x)) for x in dividend]
@@ -155,6 +179,8 @@ class Converter(Interpreter):
         if divisor:
             if len(divisor) > 1:
                 divisor = [(bracketize(x)) for x in divisor]
+            # TODO: use `\\cdot` or `\\times`?
+            #   `\\cdot` might clash with matrix multiplication, but `\\times` might be visually disturbing
             divisor_str = ' \\cdot '.join(divisor)
             return f'\\frac{{{dividend_str}}}{{{divisor_str}}}'
         else:

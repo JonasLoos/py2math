@@ -2,6 +2,9 @@
 
 With py2math you can convert some python object `x` to a Latex math string by simply calling `py2math(x)`. The result is automatically displayed as math in Jupyter notebooks.
 
+In production you might want to use the [SymPy Latex Pretty Printing Options](https://docs.sympy.org/latest/tutorials/intro-tutorial/printing.html#mathrm-latex) instead.
+
+
 ## Setup
 
 Install the requirements ([lark](https://github.com/lark-parser/lark)), e.g. by
